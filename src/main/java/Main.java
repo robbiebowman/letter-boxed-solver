@@ -12,7 +12,7 @@ import static java.util.stream.Collectors.toList;
 public class Main {
 
     public static void main(String[] args) {
-        var solver = new Solver(List.of("yfu", "lnr", "gxb", "mai"), 6);
+        var solver = new Solver(List.of("tul", "dca", "rph", "nes"), 6); // 1m22s
         var answer = solver.getShortestAnswer();
         var words = answer.words().stream().map(w -> w.getText()).toList();
         System.out.println(words);

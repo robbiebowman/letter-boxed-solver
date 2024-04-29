@@ -1,4 +1,6 @@
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Trie {
     private class TrieNode {
@@ -61,5 +63,29 @@ public class Trie {
             current = node;
         }
         return true;
+    }
+
+
+    // Returns true if the trie contains the given key, false otherwise
+    public TrieNode getNodeOrNull(String key) {
+        TrieNode current = root;
+        for (int i = 0; i < key.length(); i++) {
+            char c = key.charAt(i);
+            TrieNode node = current.children.get(c);
+            if (node == null) {
+                return null;
+            }
+            current = node;
+        }
+        return current;
+    }
+
+    public Set<String> getAllChildWords(TrieNode node, String currentWord) {
+        Set<String> words = new HashSet<>();
+        if (node.endOfKey) {
+            words.add(currentWord);
+        }
+        node.children.forEach((ch, childNode) -> words.addAll(getAllChildWords(childNode, currentWord + ch)));
+        return words;
     }
 }

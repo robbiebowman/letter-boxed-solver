@@ -4,7 +4,27 @@ apply plugin: 'java'
 sourceSets {
     main {
         java {
-            srcDirs 'src'
+            srcDirs 'src/main'
+        }
+    }
+    test {
+        java {
+            srcDirs 'src/test'
         }
     }
 }
+repositories {
+    jcenter()
+    mavenCentral()
+    maven {
+        url "https://plugins.gradle.org/m2/"
+    }
+}
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+test {
+    useJUnitPlatform()
+}
+
