@@ -1,3 +1,4 @@
+import com.robbiebowman.Trie;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -42,8 +43,7 @@ public class TrieTest {
 
     @Test
     public void testChildWordRetrieval() {
-        var node = dictionary.getNodeOrNull("test");
-        var words = dictionary.getAllChildWords(node, "test");
+        var words = dictionary.getChildWords("test");
         assertTrue(words.contains("testing"));
         assertTrue(words.contains("testers"));
         assertTrue(words.contains("testament"));

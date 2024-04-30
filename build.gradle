@@ -1,3 +1,6 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.23'
+}
 apply plugin: 'idea'
 apply plugin: 'java'
 
@@ -5,6 +8,9 @@ sourceSets {
     main {
         java {
             srcDirs 'src/main'
+        }
+        kotlin {
+            srcDirs 'src/kkotlin'
         }
     }
     test {

@@ -1,3 +1,5 @@
+package com.robbiebowman;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -67,7 +69,7 @@ public class Trie {
 
 
     // Returns true if the trie contains the given key, false otherwise
-    public TrieNode getNodeOrNull(String key) {
+    TrieNode getNodeOrNull(String key) {
         TrieNode current = root;
         for (int i = 0; i < key.length(); i++) {
             char c = key.charAt(i);
@@ -80,7 +82,12 @@ public class Trie {
         return current;
     }
 
-    public Set<String> getAllChildWords(TrieNode node, String currentWord) {
+    public Set<String> getChildWords(String prefix) {
+        var currentNode = getNodeOrNull(prefix);
+        return getAllChildWords(currentNode, prefix);
+    }
+
+    private Set<String> getAllChildWords(TrieNode node, String currentWord) {
         Set<String> words = new HashSet<>();
         if (node.endOfKey) {
             words.add(currentWord);
