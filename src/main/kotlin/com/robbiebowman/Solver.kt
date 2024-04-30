@@ -1,19 +1,12 @@
 package com.robbiebowman
 
-import com.robbiebowman.Answer
-import com.robbiebowman.Coordinate
-import com.robbiebowman.Trie
-import com.robbiebowman.Word
 import java.io.IOException
 import java.net.URISyntaxException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
-import java.util.stream.Collectors
-import java.util.stream.Stream
 
 class Solver(puzzleSides: List<String>, private val limit: Int) {
-    private val comparator: Comparator<Answer> = Comparator.comparingInt { a: Answer -> a.words.size }
 
     fun getShortestAnswer(): Answer? {
         val startingAnswers = HashSet<Answer>()
@@ -25,75 +18,68 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
                 )
             }
         }
-        var answers = startingAnswers.flatMap { s: Answer ->
-            getLegalContinuations(
-                s
-            )
-        }.let { xs -> PriorityQueue(comparator).also { it.addAll(xs) } }
-        while (!answers.isEmpty()) {
+        val answers = startingAnswers.flatMap { s: Answer ->
+            getLegalContinuations(s)
+        }.let { ans ->
+            PriorityQueue<Answer>(compareBy(
+                { it.words.size },
+                { it.words.flatMap { it.text.toSet() }.toSet().size * -1 })).also { pq ->
+                    pq.addAll(ans)
+            }
+        }
+        while (answers.isNotEmpty()) {
             val completeAnswers = answers.filter { answer: Answer -> isCompleteAnswer(answer) }
             if (completeAnswers.isNotEmpty()) {
                 val words = completeAnswers.minBy { it.words.size }.words
                 return Answer(words)
             }
-            answers.groupBy { a: Answer ->
-                a.words.stream().map { obj: Word -> obj.text }
-                    .collect(Collectors.joining())
-            }
-            answers = answers.flatMap { s: Answer ->
-                getLegalContinuations(
-                    s
-                )
-            }.let { xs -> PriorityQueue(comparator).also { it.addAll(xs) } }
+            val bestAns = answers.poll()
+            val newAnswers = getLegalContinuations(bestAns).filter { a -> answers.none { a.isStrictSubsetOf(it) } }
+            answers.addAll(newAnswers)
         }
         return null
     }
 
-    private fun getUniqueCharacters(word: String): Set<Char> {
-        return word.toSet()
+    private fun Answer.isStrictSubsetOf(other: Answer): Boolean {
+        if (this.words.size == 1) return false
+        val thisLockedInWords = this.words.dropLast(1)
+        val otherLockedInWords = other.words.dropLast(1)
+        val thisChars = thisLockedInWords.flatMap { it.text.toSet() }.toSet()
+        val otherChars = otherLockedInWords.flatMap { it.text.toSet() }.toSet()
+        val thisStarter = this.words.last().text.first()
+        val otherStarter = other.words.last().text.first()
+        val isSubset = thisChars.subtract(otherChars).isEmpty() && thisStarter == otherStarter
+        return isSubset && other.words.last().text.startsWith(this.words.last().text)
     }
 
     private fun wordAddsNewLetter(existingWords: List<Word>, newWord: Word): Boolean {
-        val existingString =
-            existingWords.stream().map { obj: Word -> obj.getText() }.reduce { s: String, s2: String -> s + s2 }
-                .toString()
-        // Create a set to store characters from the first string
-        val baseChars: MutableSet<Char> = HashSet()
-        for (c in existingString.toCharArray()) {
-            baseChars.add(c)
-        }
-        for (c in newWord.getText().toCharArray()) {
-            if (!baseChars.contains(c)) {
-                return true
-            }
-        }
-        return false
+        val existingChars = existingWords.joinToString { it.text }.toSet()
+        return newWord.text.toSet().subtract(existingChars).isNotEmpty()
     }
 
-    fun getLegalContinuations(answer: Answer): PriorityQueue<Answer> {
+    fun getLegalContinuations(answer: Answer): Set<Answer> {
         if (answer.words.size > limit) {
-            return PriorityQueue()
+            return emptySet()
         }
-        val currentWord = answer.words[answer.words.size - 1]
-        val currentPosition = currentWord.coordinates[currentWord.coordinates.size - 1]
-        val legalMoves = PriorityQueue(comparator)
+        val currentWord = answer.words.last()
+        val currentPosition = currentWord.coordinates.last()
+        val legalMoves = mutableSetOf<Answer>()
         for (y in puzzle.indices) {
             if (currentPosition.sideIndex == y) {
                 continue
             }
             val chars = puzzle[y]
             for (x in chars.indices) {
-                val newWord = Word(puzzle, concat(currentWord.coordinates, Coordinate(y, x)))
-                val wordText = newWord.getText()
-                if (canBecomeRealWord(wordText)) {
-                    val newWords = concat(answer.words.subList(0, answer.words.size - 1), newWord)
+                val newWord = Word(puzzle, currentWord.coordinates.plus(Coordinate(y, x)))
+                if (canBecomeRealWord(newWord.text)) {
+                    val newWords = answer.words.dropLast(1).plus(newWord)
                     legalMoves.add(Answer(newWords))
                 }
-                if (isRealWord(wordText)) {
+                if (isRealWord(newWord.text)) {
                     val previousWords: List<Word> = answer.words.subList(0, answer.words.size - 1)
                     if (wordAddsNewLetter(previousWords, newWord)) {
-                        val newWords = concat(previousWords, newWord)
-                        legalMoves.add(Answer(concat(newWords, Word(puzzle, java.util.List.of(Coordinate(y, x))))))
+                        val newWords = previousWords.plus(newWord)
+                        legalMoves.add(Answer(newWords.plus(Word(puzzle, listOf(Coordinate(y, x))))))
                     }
                 }
             }
@@ -102,17 +88,15 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
     }
 
     private fun isCompleteAnswer(answer: Answer): Boolean {
-        val coordinates = answer.words.stream().flatMap { i: Word -> i.coordinates.stream() }.toList()
-        for (y in puzzle.indices) {
-            val chars = puzzle[y]
-            for (x in chars.indices) {
+        val coordinates = answer.words.flatMap { i: Word -> i.coordinates }.toSet()
+        puzzle.forEachIndexed { y, rows ->
+            rows.indices.forEach { x ->
                 if (!coordinates.contains(Coordinate(y, x))) {
-                    return false
+                    return@isCompleteAnswer false
                 }
             }
         }
-
-        val finalWord = answer.words[answer.words.size - 1]
+        val finalWord = answer.words.last()
         return isRealWord(finalWord.getText())
     }
 
@@ -124,22 +108,14 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
         return dictionary.contains(wordText)
     }
 
-    private fun <T> concat(a: List<T>, b: List<T>): List<T> {
-        return Stream.concat(a.stream(), b.stream()).collect(Collectors.toList())
-    }
-
-    private fun <T> concat(`as`: List<T>, a: T): List<T> {
-        return Stream.concat(`as`.stream(), Stream.of(a)).collect(Collectors.toList())
-    }
-
-    private var puzzle: Array<out CharArray>
+    private val puzzle: Array<out CharArray>
 
     private val dictionary: Trie = Trie()
 
     init {
         try {
             val uri = Objects.requireNonNull(javaClass.getResource("/words.txt")).toURI()
-            val strings = Files.readAllLines(Paths.get(uri)).stream().filter { w: String ->
+            val strings = Files.readAllLines(Paths.get(uri)).filter { w: String ->
                 val cs = w.toCharArray()
                 for (c in cs) {
                     if (c < 'a' || c > 'z') {
@@ -150,7 +126,7 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
                     return@filter false
                 }
                 true
-            }.toList()
+            }
             for (word in strings) {
                 dictionary.insert(word)
             }
