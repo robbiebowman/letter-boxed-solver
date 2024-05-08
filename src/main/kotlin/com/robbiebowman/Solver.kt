@@ -1,7 +1,5 @@
 package com.robbiebowman
 
-import java.io.IOException
-import java.net.URISyntaxException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
@@ -21,10 +19,12 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
         val answers = startingAnswers.flatMap { s: Answer ->
             getLegalContinuations(s)
         }.let { ans ->
-            PriorityQueue<Answer>(compareBy(
-                { it.words.size },
-                { it.words.flatMap { it.text.toSet() }.toSet().size * -1 })).also { pq ->
-                    pq.addAll(ans)
+            PriorityQueue<Answer>(
+                compareBy(
+                    { it.words.size },
+                    { it.words.flatMap { it.text.toSet() }.toSet().size * -1 })
+            ).also { pq ->
+                pq.addAll(ans)
             }
         }
         while (answers.isNotEmpty()) {
@@ -57,7 +57,7 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
         return newWord.text.toSet().subtract(existingChars).isNotEmpty()
     }
 
-    fun getLegalContinuations(answer: Answer): Set<Answer> {
+    private fun getLegalContinuations(answer: Answer): Set<Answer> {
         if (answer.words.size > limit) {
             return emptySet()
         }
@@ -97,7 +97,7 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
             }
         }
         val finalWord = answer.words.last()
-        return isRealWord(finalWord.getText())
+        return isRealWord(finalWord.text)
     }
 
     private fun canBecomeRealWord(wordText: String): Boolean {
@@ -113,28 +113,11 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
     private val dictionary: Trie = Trie()
 
     init {
-        try {
-            val uri = Objects.requireNonNull(javaClass.getResource("/words.txt")).toURI()
-            val strings = Files.readAllLines(Paths.get(uri)).filter { w: String ->
-                val cs = w.toCharArray()
-                for (c in cs) {
-                    if (c < 'a' || c > 'z') {
-                        return@filter false
-                    }
-                }
-                if (w.length < 3) {
-                    return@filter false
-                }
-                true
-            }
-            for (word in strings) {
-                dictionary.insert(word)
-            }
-        } catch (e: IOException) {
-            throw RuntimeException(e)
-        } catch (e: URISyntaxException) {
-            throw RuntimeException(e)
+        val uri = javaClass.getResource("/words.txt")?.toURI() ?: throw Exception("Couldn't get resource.")
+        val strings = Files.readAllLines(Paths.get(uri)).filter { w ->
+            w.all { it in 'a'..'z' } && w.length > 2
         }
+        strings.forEach(dictionary::insert)
         puzzle = puzzleSides.map { it.toCharArray() }.toTypedArray()
     }
 }
