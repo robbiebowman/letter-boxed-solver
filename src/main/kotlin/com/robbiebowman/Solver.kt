@@ -113,9 +113,10 @@ class Solver(puzzleSides: List<String>, private val limit: Int) {
     private val dictionary: Trie = Trie()
 
     init {
+        val uniqueChars = puzzleSides.map { it.toSet() }.flatten().toSet()
         val uri = javaClass.getResource("/words.txt")?.toURI() ?: throw Exception("Couldn't get resource.")
         val strings = Files.readAllLines(Paths.get(uri)).filter { w ->
-            w.all { it in 'a'..'z' } && w.length > 2
+            w.all { uniqueChars.contains(it) } && w.length > 2
         }
         strings.forEach(dictionary::insert)
         puzzle = puzzleSides.map { it.toCharArray() }.toTypedArray()
